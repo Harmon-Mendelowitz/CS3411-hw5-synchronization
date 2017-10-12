@@ -67,7 +67,7 @@ For `LOCK_ADAPTIVE`, if the critical section is contended, the implementation wi
 Remember that your lock implementation must be itself implemented in a manner that avoids race conditions.
 Note, that you must *never* execute user-level code with interrupts disabled.
 For spin-based implementations, if you need an atomic instruction, you can use `xv6`'s `xchg` or the compare-and-swap (`cas`) implementation I provide in `cas.h`.
-I highly recommend that you re-use `xv6` abstractions for implementing each of these, where possible.
+I highly recommend that you re-use `xv6` abstractions for implementing each of your implementations, where possible.
 If your spin-based implementations seem to spin forever, especially when only a single cpu is enabled, consider 1. that you may be spinning without interrupts enabled, or 2. virtualization might be messing with the timer interrupts.
 The former is much more likely.
 
@@ -79,7 +79,7 @@ One of the main discriminating factors is the number of cores active in the syst
 - If the number of contending threads is much greater than `CPUS`?
 - If the number of contending threads is less than or equal to `CPUS`?
 
-Note that you can execute `qemu` with varying number of cpus using `CPUS=1 make qemu` for one, and `CPUS=4 make qemu` for four?
+Note that you can execute `qemu` with varying number of cpus using `CPUS=1 make qemu` for one, and `CPUS=4 make qemu` for four.
 It is likely not worthwhile to run `qemu` with more cores than your physical machine has.
 
 **Interaction with `fork`.**
@@ -179,3 +179,5 @@ critical_section(void)
 	if (shared_variable != gwthd_id()) panic("Race condition: your locks don't work!");
 }
 ```
+
+Please provide a `lock_lvl7.c` if you complete this level.
