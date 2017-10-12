@@ -8,7 +8,7 @@
 
 //#define LOCKS_IMPLEMENTED 	/* uncomment this when you have a working lock implementation */
 #ifdef LOCKS_IMPLEMENTED
-#include "ulock.h"
+#include "lock.h"
 #define LOCK_CREATE(x, y) lock_create(x, y)
 #define LOCK_TAKE(x)      lock_take(x)
 #define LOCK_RELEASE(x)   lock_release(x)
