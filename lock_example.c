@@ -9,22 +9,21 @@
 //#define LOCKS_IMPLEMENTED 	/* uncomment this when you have a working lock implementation */
 #ifdef LOCKS_IMPLEMENTED
 #include "lock.h"
-#define LOCK_CREATE(x, y) lock_create(x, y)
-#define LOCK_TAKE(x)      lock_take(x)
-#define LOCK_RELEASE(x)   lock_release(x)
-#define LOCK_DEL(x)       lock_delete(x)
+#define LOCK_CREATE(x)  lock_create(x)
+#define LOCK_TAKE(x)    lock_take(x)
+#define LOCK_RELEASE(x) lock_release(x)
+#define LOCK_DEL(x)     lock_delete(x)
 #else
 int compilehack = 0;
-struct lock { int filler; };
-#define LOCK_CREATE(x, y) compilehack++
-#define LOCK_TAKE(x)      compilehack++
-#define LOCK_RELEASE(x)   compilehack++
-#define LOCK_DEL(x)       compilehack++
+#define LOCK_CREATE(x)  compilehack++
+#define LOCK_TAKE(x)    compilehack++
+#define LOCK_RELEASE(x) compilehack++
+#define LOCK_DEL(x)     compilehack++
 #endif
 
 
 void
-child(struct lock *lock, int pipefd, char tosend)
+child(int lockid, int pipefd, char tosend)
 {
 	int i, j;
 
@@ -35,11 +34,11 @@ child(struct lock *lock, int pipefd, char tosend)
 		 * child does.  Thus we can detect race conditions on
 		 * the "shared resource" that is the pipe.
 		 */
-		LOCK_TAKE(lock);
+		LOCK_TAKE(lockid);
 		for (j = 0 ; j < CRITSECTSZ ; j++) {
 			write(pipefd, &tosend, 1);
 		}
-		LOCK_RELEASE(lock);
+		LOCK_RELEASE(lockid);
 	}
 	exit();
 }
@@ -50,7 +49,7 @@ main(void)
 	int i;
 	int pipes[2];
 	char data[NCHILDREN], first = 'a';
-	struct lock l;
+	int lockid;
 
 	for (i = 0 ; i < NCHILDREN ; i++) {
 		data[i] = (char)(first + i);
@@ -61,13 +60,13 @@ main(void)
 		exit();
 	}
 
-	if (LOCK_CREATE(&l, LOCK_BLOCK) < 0) {
+	if ((lockid = LOCK_CREATE(LOCK_BLOCK)) < 0) {
 		printf(1, "Lock creation error\n");
 		exit();
 	}
 
 	for (i = 0 ; i < NCHILDREN ; i++) {
-		if (fork() == 0) child(&l, pipes[1], data[i]);
+		if (fork() == 0) child(lockid, pipes[1], data[i]);
 	}
 	close(pipes[1]);
 
@@ -95,7 +94,7 @@ done:
 		}
 	}
 
-	LOCK_DEL(&l);
+	LOCK_DEL(lockid);
 
 	exit();
 }
