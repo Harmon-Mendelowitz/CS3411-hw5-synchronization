@@ -94,7 +94,7 @@ sys_slock_create(void)
 	if(argint(0, &type) < 0)
 		return -1;
 
-	return slock_create((lock_type_t)type);
+	return slock_create(type);
 }
 int
 sys_slock_take(void)

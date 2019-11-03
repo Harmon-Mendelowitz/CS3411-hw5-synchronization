@@ -12,9 +12,15 @@ struct {
 	struct proc     proc[NPROC];
 } ptable;
 
+struct {
+	struct spinlock lock;
+	struct locks    locks[MAX_NUM_LOCKS];
+} locktable;
+
 static struct proc *initproc;
 
 int         nextpid = 1;
+int         nextlkid = 0;
 extern void forkret(void);
 extern void trapret(void);
 
@@ -24,6 +30,7 @@ void
 pinit(void)
 {
 	initlock(&ptable.lock, "ptable");
+	initlock(&locktable.lock, "lktable");
 }
 
 // Must be called with interrupts disabled
@@ -202,6 +209,16 @@ fork(void)
 	for (i = 0; i < NOFILE; i++)
 		if (curproc->ofile[i]) np->ofile[i] = filedup(curproc->ofile[i]);
 	np->cwd = idup(curproc->cwd);
+
+	for (int l = 0; l < MAX_NUM_LOCKS; l++){
+		if (curproc->lockarray[l])
+		{
+			acquire(&locktable.lock);
+			locktable.locks[l].numref++;
+			np->lockarray[l] = curproc->lockarray[l];
+			release(&locktable.lock);
+		}
+	}
 
 	safestrcpy(np->name, curproc->name, sizeof(curproc->name));
 
@@ -508,22 +525,44 @@ procdump(void)
 }
 
 int
-slock_create(lock_type_t type)
+slock_create(int lockType)
 {
+	if(nextlkid < MAX_NUM_LOCKS){
+		lock_type_t type = (lock_type_t)lockType;
+		struct locks *lk;
 
-    return 1;
+		acquire(&locktable.lock);
+		for (lk = locktable.locks; lk < &locktable.locks[MAX_NUM_LOCKS]; lk++)
+		{
+			if(lk == 0)
+			{
+				lk->type   = type;
+				lk->id     = nextlkid++;
+				lk->state  = 0;
+				lk->numref = 1;
+
+				myproc()->lockarray[lk->id] = lk;
+				
+				break;
+			}
+		}
+		release(&locktable.lock);
+
+		return lk->id;
+	}
+	return -1;
 }
 int
 slock_take(int lockid)
 {
 
-    return 2;
+    return 0;
 }
 int
 slock_release(int lockid)
 {
 
-    return 3;
+    return 0;
 }
 void
 slock_delete(int lockid)
