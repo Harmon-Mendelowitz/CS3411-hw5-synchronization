@@ -1,12 +1,12 @@
 #include "types.h"
 #include "user.h"
-#include "printf.h"
+//#include "printf.h"
 
 #define NCHILDREN  8		/* should be > 1 to have contention */
 #define CRITSECTSZ 3
 #define DATASZ (1024 * 32 / NCHILDREN)
 
-//#define LOCKS_IMPLEMENTED 	/* uncomment this when you have a working lock implementation */
+#define LOCKS_IMPLEMENTED 	/* uncomment this when you have a working lock implementation */
 #ifdef LOCKS_IMPLEMENTED
 #include "lock.h"
 #define LOCK_CREATE(x)  lock_create(x)

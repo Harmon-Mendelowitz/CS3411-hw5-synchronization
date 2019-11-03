@@ -23,6 +23,10 @@ int   getpid(void);
 char *sbrk(int);
 int   sleep(int);
 int   uptime(void);
+int   slock_create(int);
+int   slock_take(int);
+int   slock_release(int);
+void  slock_delete(int);
 
 // ulib.c
 int   stat(char *, struct stat *);

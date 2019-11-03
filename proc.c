@@ -506,3 +506,27 @@ procdump(void)
 		cprintf("\n");
 	}
 }
+
+int
+slock_create(lock_type_t type)
+{
+
+    return 1;
+}
+int
+slock_take(int lockid)
+{
+
+    return 2;
+}
+int
+slock_release(int lockid)
+{
+
+    return 3;
+}
+void
+slock_delete(int lockid)
+{
+
+}

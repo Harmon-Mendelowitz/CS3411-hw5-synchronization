@@ -10,6 +10,17 @@ struct sleeplock;
 struct stat;
 struct superblock;
 
+typedef enum {
+	LOCK_SPIN,
+	LOCK_BLOCK,
+	LOCK_ADAPTIVE,
+} lock_type_t;
+
+int  slock_create(lock_type_t);
+int  slock_take(int);
+int  slock_release(int);
+void slock_delete(int);
+
 // bio.c
 void        binit(void);
 struct buf *bread(uint, uint);

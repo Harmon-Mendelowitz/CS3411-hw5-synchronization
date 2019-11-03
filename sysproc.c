@@ -85,3 +85,44 @@ sys_uptime(void)
 	release(&tickslock);
 	return xticks;
 }
+
+int
+sys_slock_create(void)
+{
+	int type;
+
+	if(argint(0, &type) < 0)
+		return -1;
+
+	return slock_create((lock_type_t)type);
+}
+int
+sys_slock_take(void)
+{
+	int id;
+
+	if(argint(0, &id) < 0)
+		return -1;
+
+	return slock_take(id);
+}
+int
+sys_slock_release(void)
+{
+	int id;
+
+	if(argint(0, &id) < 0)
+		return -1;
+
+	return slock_release(id);
+}
+void
+sys_slock_delete(void)
+{
+	int id;
+
+	if(argint(0, &id) < 0)
+		return;
+
+	slock_delete(id);
+}
