@@ -15,6 +15,7 @@ struct locks {
 	int           access;
 	int           numref;
 	int           pid;
+	int           numspins;
 };
 
 struct {
@@ -553,6 +554,7 @@ slock_create(int lockType)
 				lk->id     = nextlkid++;
 				lk->state  = 0;
 				lk->numref = 1;
+				lk->numspins = 0;
 				initlock(&lk->splk, "sleep lock");
 
 				locktable.locks[lk->id] = *lk;
@@ -601,27 +603,31 @@ slock_take(int lockid)
 				if(xchg(add, 1) == 0)
 					break;
 			}
+			//for(; om;);
+			//while(!om);
 			return 0;
 		}
 		else if(locktable.locks[lockid].type == LOCK_ADAPTIVE){
 			volatile uint * add = (volatile uint *)&lk->state;
-			while(numspins < LOCK_ADAPTIVE_SPIN){
+			while(lk->numspins < LOCK_ADAPTIVE_SPIN){
 				if(xchg(add, 1) == 0)
-					goto skip;
-				numspins++;
-				if(numspins == LOCK_ADAPTIVE_SPIN)
-				{
-					acquire(&lk->splk);
-					while (lk->state) {
-						sleep(lk, &lk->splk);
-					}
-					lk->state = 1;
-					lk->pid   = myproc()->pid;
-					release(&lk->splk);
+					return 0;
+
+				lk->numspins++;
+			}
+			if(!(lk->numspins < LOCK_ADAPTIVE_SPIN))
+			{
+				acquire(&lk->splk);
+				while (lk->state) {
+					sleep(lk, &lk->splk);
 				}
+				lk->state = 1;
+				lk->pid   = myproc()->pid;
+				release(&lk->splk);
+				return 0;
 			}
 
-			skip: return 0;
+			return 0;
 		}
 		else{
 			//release(&locktable.lock);
@@ -662,14 +668,15 @@ slock_release(int lockid)
 				return 0;
 			}
 			else if(locktable.locks[lockid].type == LOCK_ADAPTIVE){
-				if(numspins < LOCK_ADAPTIVE_SPIN){
-					numspins = 0;
+				if(lk->numspins < LOCK_ADAPTIVE_SPIN){
+					lk->numspins = 0;
 					lk->state = 0;
+					wakeup(lk);
 				}
 				else{
 					acquire(&lk->splk);
 					lk->state = 0;
-					numspins = 0;
+					lk->numspins = 0;
 					lk->pid   = 0;
 					wakeup(lk);
 					release(&lk->splk);
