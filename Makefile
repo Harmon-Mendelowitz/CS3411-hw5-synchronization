@@ -175,6 +175,8 @@ UPROGS=\
 	_wc\
 	_zombie\
 	_lock_example\
+	_lock_lvl0\
+	_lock_lvl1\
 
 fs.img: mkfs README $(UPROGS)
 	./mkfs fs.img README $(UPROGS)

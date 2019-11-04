@@ -14,6 +14,7 @@ struct locks {
 	int           state;
 	int           access;
 	int           numref;
+	int           pid;
 };
 
 struct {
@@ -219,15 +220,17 @@ fork(void)
 		if (curproc->ofile[i]) np->ofile[i] = filedup(curproc->ofile[i]);
 	np->cwd = idup(curproc->cwd);
 
+	acquire(&locktable.lock);
 	for (int l = 0; l < MAX_NUM_LOCKS; l++){
 		if (curproc->lockarray[l])
 		{
-			acquire(&locktable.lock);
+			acquire(&locktable.locks[l].splk);
 			locktable.locks[l].numref++;
 			np->lockarray[l] = &locktable.locks[l];
-			release(&locktable.lock);
+			release(&locktable.locks[l].splk);
 		}
 	}
+	release(&locktable.lock);
 
 	safestrcpy(np->name, curproc->name, sizeof(curproc->name));
 
@@ -536,11 +539,11 @@ procdump(void)
 int
 slock_create(int lockType)
 {
+	acquire(&locktable.lock);
 	if(nextlkid < MAX_NUM_LOCKS){
 		lock_type_t type = (lock_type_t)lockType;
 		struct locks *lk;
 
-		acquire(&locktable.lock);
 		for (lk = locktable.locks; lk < &locktable.locks[MAX_NUM_LOCKS]; lk++)
 		{
 			if(lk->numref == 0)
@@ -558,21 +561,24 @@ slock_create(int lockType)
 				return lk->id;
 			}
 		}
-		release(&locktable.lock);
 	}
+	release(&locktable.lock);
 	return -1;
 }
 int
 slock_take(int lockid)
 {
 	//return -1 if thd doesn't have access to lock id or thd already hold crit section
-	acquire(&locktable.lock);
+	//acquire(&locktable.lock);
 	if(locktable.locks[lockid].type == LOCK_BLOCK)
 	{
 		if(myproc()->lockarray[lockid])
 		{
-			if(myproc()->lockarray[lockid]->state == 0)
-			{
+			if(locktable.locks[lockid].state == 1 && locktable.locks[lockid].pid == myproc()->pid){
+				//release(&locktable.lock);
+				return -1;
+			}
+
 				struct locks *lk = &locktable.locks[lockid];
 				//give lock
 				acquire(&lk->splk);
@@ -580,56 +586,54 @@ slock_take(int lockid)
 					sleep(lk, &lk->splk);
 				}
 				lk->state = 1;
+				lk->pid    = myproc()->pid;
 				release(&lk->splk);
 
-				release(&locktable.lock);
+				//release(&locktable.lock);
 				return 0;
-			}
-			else if (myproc()->lockarray[lockid]->state == 1){
-				release(&locktable.lock);
-				return -1;
-			}
+			
 		}
 		else{
-			release(&locktable.lock);
+			//release(&locktable.lock);
 			return -1;
 		}
 	}
 
-	release(&locktable.lock);
+	//release(&locktable.lock);
     return -1;
 }
 int
 slock_release(int lockid)
 {
-	acquire(&locktable.lock);
+	//acquire(&locktable.lock);
+	
 	if(locktable.locks[lockid].type == LOCK_BLOCK)
 	{
 		if(myproc()->lockarray[lockid])
 		{
-			if(myproc()->lockarray[lockid]->state == 1)
-			{
+			if(locktable.locks[lockid].state == 0){
+				//release(&locktable.lock);
+				return -1;
+			}
+
 				struct locks *lk = &locktable.locks[lockid];
 				//take lock
 				acquire(&lk->splk);
 				lk->state = 0;
+				lk->pid   = 0;
 				wakeup(lk);
 				release(&lk->splk);
 
-				release(&locktable.lock);
+				//release(&locktable.lock);
 				return 0;
-			}
-			else if (myproc()->lockarray[lockid]->state == 0){
-				release(&locktable.lock);
-				return -1;
-			}
+			
 		}
 		else{
-			release(&locktable.lock);
+			//release(&locktable.lock);
 			return -1;
 		}
 	}
-	release(&locktable.lock);
+	//release(&locktable.lock);
     return -1;
 }
 void
