@@ -570,28 +570,36 @@ slock_take(int lockid)
 {
 	//return -1 if thd doesn't have access to lock id or thd already hold crit section
 	//acquire(&locktable.lock);
-	if(locktable.locks[lockid].type == LOCK_BLOCK)
+
+	if(myproc()->lockarray[lockid])
 	{
-		if(myproc()->lockarray[lockid])
+		if(locktable.locks[lockid].state == 1 && locktable.locks[lockid].pid == myproc()->pid){
+			//release(&locktable.lock);
+			return -1;
+		}
+
+		struct locks *lk = &locktable.locks[lockid];
+
+		if(locktable.locks[lockid].type == LOCK_BLOCK)
 		{
-			if(locktable.locks[lockid].state == 1 && locktable.locks[lockid].pid == myproc()->pid){
-				//release(&locktable.lock);
-				return -1;
+			//give lock
+			acquire(&lk->splk);
+			while (lk->state) {
+				sleep(lk, &lk->splk);
 			}
+			lk->state = 1;
+			lk->pid    = myproc()->pid;
+			release(&lk->splk);
 
-				struct locks *lk = &locktable.locks[lockid];
-				//give lock
-				acquire(&lk->splk);
-				while (lk->state) {
-					sleep(lk, &lk->splk);
-				}
-				lk->state = 1;
-				lk->pid    = myproc()->pid;
-				release(&lk->splk);
-
-				//release(&locktable.lock);
-				return 0;
-			
+			//release(&locktable.lock);
+			return 0;
+		}
+		else if(locktable.locks[lockid].type == LOCK_SPIN){
+			volatile uint * add = (volatile uint *)&lk->state;
+			while(1){
+				if(xchg(add, 1) == 0)
+					break;
+			}
 		}
 		else{
 			//release(&locktable.lock);
@@ -607,8 +615,6 @@ slock_release(int lockid)
 {
 	//acquire(&locktable.lock);
 	
-	if(locktable.locks[lockid].type == LOCK_BLOCK)
-	{
 		if(myproc()->lockarray[lockid])
 		{
 			if(locktable.locks[lockid].state == 0){
@@ -616,8 +622,10 @@ slock_release(int lockid)
 				return -1;
 			}
 
-				struct locks *lk = &locktable.locks[lockid];
-				//take lock
+			struct locks *lk = &locktable.locks[lockid];
+			//take lock
+			if(locktable.locks[lockid].type == LOCK_BLOCK)
+			{
 				acquire(&lk->splk);
 				lk->state = 0;
 				lk->pid   = 0;
@@ -626,13 +634,15 @@ slock_release(int lockid)
 
 				//release(&locktable.lock);
 				return 0;
-			
+			}
+			else if(locktable.locks[lockid].type == LOCK_SPIN){
+				lk->state = 0;
+			}
+			else{
+				//release(&locktable.lock);
+				return -1;
+			}
 		}
-		else{
-			//release(&locktable.lock);
-			return -1;
-		}
-	}
 	//release(&locktable.lock);
     return -1;
 }
