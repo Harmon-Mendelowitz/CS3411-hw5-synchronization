@@ -61,12 +61,6 @@ struct proc {
 	struct locks *    lockarray[MAX_NUM_LOCKS]; // locks
 };
 
-struct locks {
-	lock_type_t   type;
-	int           id;
-	int           state;
-	int           numref;
-};
 // Process memory is laid out contiguously, low addresses first:
 //   text
 //   original data and bss

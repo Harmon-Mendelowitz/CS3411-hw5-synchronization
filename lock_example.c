@@ -34,11 +34,15 @@ child(int lockid, int pipefd, char tosend)
 		 * child does.  Thus we can detect race conditions on
 		 * the "shared resource" that is the pipe.
 		 */
+		//int t = LOCK_TAKE(lockid);
+		//printf(1, "take: %d\n", t);
 		LOCK_TAKE(lockid);
 		for (j = 0 ; j < CRITSECTSZ ; j++) {
 			write(pipefd, &tosend, 1);
 		}
 		LOCK_RELEASE(lockid);
+		//int r = LOCK_RELEASE(lockid);
+		//printf(1, "release: %d\n", r);
 	}
 	exit();
 }

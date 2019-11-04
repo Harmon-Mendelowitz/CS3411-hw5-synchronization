@@ -7,6 +7,15 @@
 #include "proc.h"
 #include "spinlock.h"
 
+struct locks {
+	struct spinlock splk;
+	lock_type_t   type;
+	int           id;
+	int           state;
+	int           access;
+	int           numref;
+};
+
 struct {
 	struct spinlock lock;
 	struct proc     proc[NPROC];
@@ -215,7 +224,7 @@ fork(void)
 		{
 			acquire(&locktable.lock);
 			locktable.locks[l].numref++;
-			np->lockarray[l] = curproc->lockarray[l];
+			np->lockarray[l] = &locktable.locks[l];
 			release(&locktable.lock);
 		}
 	}
@@ -534,35 +543,94 @@ slock_create(int lockType)
 		acquire(&locktable.lock);
 		for (lk = locktable.locks; lk < &locktable.locks[MAX_NUM_LOCKS]; lk++)
 		{
-			if(lk == 0)
+			if(lk->numref == 0)
 			{
 				lk->type   = type;
 				lk->id     = nextlkid++;
 				lk->state  = 0;
 				lk->numref = 1;
+				initlock(&lk->splk, "sleep lock");
 
-				myproc()->lockarray[lk->id] = lk;
+				locktable.locks[lk->id] = *lk;
+				myproc()->lockarray[lk->id] = &locktable.locks[lk->id];
 				
-				break;
+				release(&locktable.lock);
+				return lk->id;
 			}
 		}
 		release(&locktable.lock);
-
-		return lk->id;
 	}
 	return -1;
 }
 int
 slock_take(int lockid)
 {
+	//return -1 if thd doesn't have access to lock id or thd already hold crit section
+	acquire(&locktable.lock);
+	if(locktable.locks[lockid].type == LOCK_BLOCK)
+	{
+		if(myproc()->lockarray[lockid])
+		{
+			if(myproc()->lockarray[lockid]->state == 0)
+			{
+				struct locks *lk = &locktable.locks[lockid];
+				//give lock
+				acquire(&lk->splk);
+				while (lk->state) {
+					sleep(lk, &lk->splk);
+				}
+				lk->state = 1;
+				release(&lk->splk);
 
-    return 0;
+				release(&locktable.lock);
+				return 0;
+			}
+			else if (myproc()->lockarray[lockid]->state == 1){
+				release(&locktable.lock);
+				return -1;
+			}
+		}
+		else{
+			release(&locktable.lock);
+			return -1;
+		}
+	}
+
+	release(&locktable.lock);
+    return -1;
 }
 int
 slock_release(int lockid)
 {
+	acquire(&locktable.lock);
+	if(locktable.locks[lockid].type == LOCK_BLOCK)
+	{
+		if(myproc()->lockarray[lockid])
+		{
+			if(myproc()->lockarray[lockid]->state == 1)
+			{
+				struct locks *lk = &locktable.locks[lockid];
+				//take lock
+				acquire(&lk->splk);
+				lk->state = 0;
+				wakeup(lk);
+				release(&lk->splk);
 
-    return 0;
+				release(&locktable.lock);
+				return 0;
+			}
+			else if (myproc()->lockarray[lockid]->state == 0){
+				release(&locktable.lock);
+				return -1;
+			}
+		}
+		else{
+			release(&locktable.lock);
+			return -1;
+		}
+	}
+	release(&locktable.lock);
+    return -1;
 }
 void
 slock_delete(int lockid)
