@@ -29,6 +29,7 @@ struct {
 
 static struct proc *initproc;
 
+int 		numspins = 0;
 int         nextpid = 1;
 int         nextlkid = 0;
 extern void forkret(void);
@@ -600,6 +601,27 @@ slock_take(int lockid)
 				if(xchg(add, 1) == 0)
 					break;
 			}
+			return 0;
+		}
+		else if(locktable.locks[lockid].type == LOCK_ADAPTIVE){
+			volatile uint * add = (volatile uint *)&lk->state;
+			while(numspins < LOCK_ADAPTIVE_SPIN){
+				if(xchg(add, 1) == 0)
+					goto skip;
+				numspins++;
+				if(numspins == LOCK_ADAPTIVE_SPIN)
+				{
+					acquire(&lk->splk);
+					while (lk->state) {
+						sleep(lk, &lk->splk);
+					}
+					lk->state = 1;
+					lk->pid   = myproc()->pid;
+					release(&lk->splk);
+				}
+			}
+
+			skip: return 0;
 		}
 		else{
 			//release(&locktable.lock);
@@ -637,6 +659,22 @@ slock_release(int lockid)
 			}
 			else if(locktable.locks[lockid].type == LOCK_SPIN){
 				lk->state = 0;
+				return 0;
+			}
+			else if(locktable.locks[lockid].type == LOCK_ADAPTIVE){
+				if(numspins < LOCK_ADAPTIVE_SPIN){
+					numspins = 0;
+					lk->state = 0;
+				}
+				else{
+					acquire(&lk->splk);
+					lk->state = 0;
+					numspins = 0;
+					lk->pid   = 0;
+					wakeup(lk);
+					release(&lk->splk);
+				}
+				return 0;
 			}
 			else{
 				//release(&locktable.lock);
