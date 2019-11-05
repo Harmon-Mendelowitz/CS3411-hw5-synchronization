@@ -179,6 +179,7 @@ UPROGS=\
 	_lock_lvl1\
 	_lock_lvl2\
 	_lock_lvl3\
+	_lock_lvl4\
 
 fs.img: mkfs README $(UPROGS)
 	./mkfs fs.img README $(UPROGS)

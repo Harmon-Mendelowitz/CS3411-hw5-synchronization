@@ -591,7 +591,7 @@ slock_take(int lockid)
 				sleep(lk, &lk->splk);
 			}
 			lk->state = 1;
-			lk->pid    = myproc()->pid;
+			lk->pid = myproc()->pid;
 			release(&lk->splk);
 
 			//release(&locktable.lock);
@@ -600,8 +600,10 @@ slock_take(int lockid)
 		else if(locktable.locks[lockid].type == LOCK_SPIN){
 			volatile uint * add = (volatile uint *)&lk->state;
 			while(1){
-				if(xchg(add, 1) == 0)
+				if(xchg(add, 1) == 0){
+					lk->pid = myproc()->pid;
 					break;
+				}
 			}
 			//for(; om;);
 			//while(!om);
@@ -640,7 +642,7 @@ slock_release(int lockid)
 	
 		if(myproc()->lockarray[lockid])
 		{
-			if(locktable.locks[lockid].state == 0){
+			if(locktable.locks[lockid].state == 0 && locktable.locks[lockid].pid == myproc()->pid){
 				//release(&locktable.lock);
 				return -1;
 			}
@@ -660,6 +662,7 @@ slock_release(int lockid)
 			}
 			else if(locktable.locks[lockid].type == LOCK_SPIN){
 				lk->state = 0;
+				lk->pid = 0;
 				return 0;
 			}
 			else if(locktable.locks[lockid].type == LOCK_ADAPTIVE){
