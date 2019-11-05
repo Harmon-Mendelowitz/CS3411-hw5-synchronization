@@ -100,18 +100,23 @@ main(void)
 		exit();
 	}
 
-	/*for (i = 0 ; i < NCHILDREN ; i++) {
+	for (i = 0 ; i < NCHILDREN ; i++) {
         int realid;
-        if(i < 4)
+		char realdata;
+        if(i < 4){
             realid = lockid;
-        else
+			realdata = data[i];
+		}
+        else{
             realid = lockid3;
+			realdata = 'z';
+		}
             
-		if (fork() == 0) child(realid, pipes[1], data[i], i);
-	}*/
-    for (i = 0 ; i < NCHILDREN; i++) {
-		if (fork() == 0) child(lockid, pipes[1], data[i], i);
+		if (fork() == 0) child(realid, pipes[1], realdata, i);
 	}
+    /*for (i = 0 ; i < NCHILDREN; i++) {
+		if (fork() == 0) child(lockid, pipes[1], data[i], i);
+	}*/
 
 
 	close(pipes[1]);
@@ -126,7 +131,8 @@ main(void)
 
 			if (fst == '_') {
 				fst = c;
-			} else if (fst != c) {
+			} else if (fst != c && (fst!='z' && c!='z')) {
+				printf(1, "%c\n", fst);
 				printf(1, "RACE!!!\n");
 			}
 		}
