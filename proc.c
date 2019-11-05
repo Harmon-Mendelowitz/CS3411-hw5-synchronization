@@ -615,18 +615,13 @@ slock_take(int lockid)
 
 				lk->numspins++;
 			}
-			if(!(lk->numspins < LOCK_ADAPTIVE_SPIN))
-			{
-				acquire(&lk->splk);
-				while (lk->state) {
-					sleep(lk, &lk->splk);
-				}
-				lk->state = 1;
-				lk->pid   = myproc()->pid;
-				release(&lk->splk);
-				return 0;
+			acquire(&lk->splk);
+			while (xchg(add, 1) != 0) {
+				sleep(lk, &lk->splk);
 			}
-
+			lk->state = 1;
+			lk->pid   = myproc()->pid;
+			release(&lk->splk);
 			return 0;
 		}
 		else{
@@ -671,6 +666,7 @@ slock_release(int lockid)
 				if(lk->numspins < LOCK_ADAPTIVE_SPIN){
 					lk->numspins = 0;
 					lk->state = 0;
+					lk->pid   = 0;
 					wakeup(lk);
 				}
 				else{
