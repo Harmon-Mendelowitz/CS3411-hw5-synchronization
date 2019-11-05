@@ -26,15 +26,15 @@ void
 child(int lockid, int pipefd, char tosend, int ithChild)
 {
 	int i, j;
+    int lockid2;
 
     if(ithChild == 0)
     {
-        int lockid2;
         if ((lockid2 = LOCK_CREATE(LOCK_SPIN)) < 0) {
             printf(1, "Lock creation error\n");
             exit();
 	    }
-        else{
+        /*else{
             for (i = 0 ; i < DATASZ ; i += CRITSECTSZ) {
 
                 //int lt = LOCK_TAKE(lockid2);
@@ -47,7 +47,7 @@ child(int lockid, int pipefd, char tosend, int ithChild)
                 //int lr = LOCK_RELEASE(lockid2);
                 //printf(1, "release: %d\n", lr);
             }
-        }
+        }*/
     }
     else{
 
@@ -80,6 +80,7 @@ main(void)
 	int pipes[2];
 	char data[NCHILDREN], first = 'a';
 	int lockid;
+    int lockid3;
 
 	for (i = 0 ; i < NCHILDREN ; i++) {
 		data[i] = (char)(first + i);
@@ -94,10 +95,25 @@ main(void)
 		printf(1, "Lock creation error\n");
 		exit();
 	}
+    if ((lockid3 = LOCK_CREATE(LOCK_ADAPTIVE)) < 0) {
+		printf(1, "Lock creation error\n");
+		exit();
+	}
 
-	for (i = 0 ; i < NCHILDREN ; i++) {
+	/*for (i = 0 ; i < NCHILDREN ; i++) {
+        int realid;
+        if(i < 4)
+            realid = lockid;
+        else
+            realid = lockid3;
+            
+		if (fork() == 0) child(realid, pipes[1], data[i], i);
+	}*/
+    for (i = 0 ; i < NCHILDREN; i++) {
 		if (fork() == 0) child(lockid, pipes[1], data[i], i);
 	}
+
+
 	close(pipes[1]);
 
 	while (1) {
