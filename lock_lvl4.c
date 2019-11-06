@@ -26,49 +26,35 @@ void
 child(int lockid, int pipefd, char tosend, int ithChild)
 {
 	int i, j;
-    int lockid2;
 
     if(ithChild == 0)
     {
+		int lockid2;
         if ((lockid2 = LOCK_CREATE(LOCK_SPIN)) < 0) {
             printf(1, "Lock creation error\n");
             exit();
 	    }
-        /*else{
-            for (i = 0 ; i < DATASZ ; i += CRITSECTSZ) {
-
-                //int lt = LOCK_TAKE(lockid2);
-                //printf(1, "take: %d\n", lt);
-                LOCK_TAKE(lockid2);
-                for (j = 0 ; j < CRITSECTSZ ; j++) {
-                    write(pipefd, &tosend, 1);
-                }
-                LOCK_RELEASE(lockid2);
-                //int lr = LOCK_RELEASE(lockid2);
-                //printf(1, "release: %d\n", lr);
-            }
-        }*/
     }
-    else{
 
-        for (i = 0 ; i < DATASZ ; i += CRITSECTSZ) {
-            /*
-            * If the critical section works, then each child
-            * writes CRITSECTSZ times to the pipe before another
-            * child does.  Thus we can detect race conditions on
-            * the "shared resource" that is the pipe.
-            */
-            //int t = LOCK_TAKE(lockid);
-            //printf(1, "take not 0: %d\n", t);
-            LOCK_TAKE(lockid);
-            for (j = 0 ; j < CRITSECTSZ ; j++) {
-                write(pipefd, &tosend, 1);
-            }
-            LOCK_RELEASE(lockid);
-            //int r = LOCK_RELEASE(lockid);
-            //printf(1, "release not 0: %d\n", r);
-            
-        }
+	for (i = 0 ; i < DATASZ ; i += CRITSECTSZ) {
+		/*
+		* If the critical section works, then each child
+		* writes CRITSECTSZ times to the pipe before another
+		* child does.  Thus we can detect race conditions on
+		* the "shared resource" that is the pipe.
+		*/
+		//int t = LOCK_TAKE(lockid);
+		//printf(1, "take not 0: %d\n", t);
+		if(ithChild == 6){
+			lockid = lockid+1;
+		}
+		LOCK_TAKE(lockid);
+		for (j = 0 ; j < CRITSECTSZ ; j++) {
+			write(pipefd, &tosend, 1);
+		}
+		LOCK_RELEASE(lockid);
+		//int r = LOCK_RELEASE(lockid);
+		//printf(1, "release not 0: %d\n", r);
     }
 	exit();
 }
@@ -112,7 +98,10 @@ main(void)
 			realdata = 'z';
 		}
             
-		if (fork() == 0) child(realid, pipes[1], realdata, i);
+		if (fork() == 0) {
+			
+			child(realid, pipes[1], realdata, i);
+		}
 	}
     /*for (i = 0 ; i < NCHILDREN; i++) {
 		if (fork() == 0) child(lockid, pipes[1], data[i], i);
@@ -129,10 +118,16 @@ main(void)
 		for (cnt = 0 ; cnt < CRITSECTSZ ; cnt++) {
 			if (read(pipes[0], &c, 1) == 0) goto done;
 
+			//printf(1, "%c", c);
+
+			if(c == 'z')
+			{
+				cnt--;
+			}
+
 			if (fst == '_') {
 				fst = c;
 			} else if (fst != c && (fst!='z' && c!='z')) {
-				printf(1, "%c\n", fst);
 				printf(1, "RACE!!!\n");
 			}
 		}

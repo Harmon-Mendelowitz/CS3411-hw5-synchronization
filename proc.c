@@ -574,7 +574,7 @@ slock_take(int lockid)
 	//return -1 if thd doesn't have access to lock id or thd already hold crit section
 	//acquire(&locktable.lock);
 
-	if(myproc()->lockarray[lockid])
+	if(myproc()->lockarray[lockid] == &locktable.locks[lockid])
 	{
 		if(locktable.locks[lockid].state == 1 && locktable.locks[lockid].pid == myproc()->pid){
 			//release(&locktable.lock);
@@ -640,7 +640,7 @@ slock_release(int lockid)
 {
 	//acquire(&locktable.lock);
 	
-		if(myproc()->lockarray[lockid])
+		if(myproc()->lockarray[lockid] == &locktable.locks[lockid])
 		{
 			if(locktable.locks[lockid].state == 0 && locktable.locks[lockid].pid == myproc()->pid){
 				//release(&locktable.lock);
