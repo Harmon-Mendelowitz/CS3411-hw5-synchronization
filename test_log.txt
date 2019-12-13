@@ -2,6 +2,8 @@
 
 [error:level6] Does not return the correct value when we release lock before taking it.
 
+[error:level6] Does not return the corrzombie!
+
 [error:level1] failure in testing part of level 1.
 
 [error:level2] failure in testing part of level 2.
